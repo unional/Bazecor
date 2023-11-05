@@ -1,0 +1,29 @@
+name: Submit Bazecor to Windows Package Manager Community Repository
+# based off of https://github.com/microsoft/PowerToys/blob/main/.github/workflows/package-submissions.yml
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  winget:
+    name: Publish winget package
+    runs-on: windows-latest
+    steps:
+      - name: Submit package to Windows Package Manager Community Repository
+        run: |
+
+          $wingetPackage = "DygmaLabs.Bazecor"
+          $gitToken = "${{ secrets.WINGET }}"
+
+          $github = Invoke-RestMethod -uri "https://api.github.com/repos/Dygmalab/Bazecor/releases"
+
+          $targetRelease = $github | Where-Object -Property name -match 'Bazecor'| Select -First 1
+          # TODO supports x64 + arm64
+          $installerUrl = $targetRelease | Select -ExpandProperty assets -First 1 | Where-Object -Property name -match 'Bazecor-*.exe' | Select -ExpandProperty browser_download_url
+          $ver = $targetRelease.tag_name.Trim("v")
+
+          # getting latest wingetcreate file
+          iwr https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe update $wingetPackage -s -v $ver -u "$installerUrl" -t $gitToken
